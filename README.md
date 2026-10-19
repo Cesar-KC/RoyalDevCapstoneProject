@@ -2,38 +2,17 @@
 
 A full-stack budgeting application built as a senior capstone project at UMKC.
 
-**Current status:** User registration works end to end (React form → FastAPI → MySQL).
+**Current status:** User registration and login works end to end (React form → FastAPI → MySQL).
 
 ## Tech Stack
 
 | Layer    | Technology                                   |
 |----------|----------------------------------------------|
-| Frontend | React (Vite), JavaScript                      |
-| Backend  | Python, FastAPI, SQLAlchemy, Pydantic, bcrypt |
+| Frontend | React (Vite), JavaScript, Tailwind CSS       |
+| Backend  | Python, FastAPI, SQLAlchemy, Pydantic, bcrypt|
 | Database | MySQL                                        |
 
 Tested with Python 3.13, Node.js 24, and MySQL 9.6.
-
-## Project Structure
-
-```
-RoyalDevCapstoneProject/
-├── back-end/          FastAPI application
-│   ├── main.py        App setup, CORS, and API routes
-│   ├── database.py    Database connection (engine, sessions)
-│   ├── models.py      SQLAlchemy models (database tables)
-│   ├── schemas.py     Pydantic schemas (API request/response shapes)
-│   ├── requirements.txt
-│   └── .env.example   Template for local database settings
-├── front-end/         React application (Vite)
-│   └── src/
-│       ├── main.jsx          Entry point
-│       ├── App.jsx           Top-level component
-│       └── RegisterPage.jsx  Registration form
-├── database/
-│   └── schema.sql     Creates the database and tables
-└── docs/              Project documents (charter, requirements, diagrams)
-```
 
 ## Setup
 
@@ -83,6 +62,7 @@ Interactive API docs are available at http://127.0.0.1:8000/docs.
 | Method | Path            | Description         | Responses                          |
 |--------|-----------------|---------------------|------------------------------------|
 | POST   | `/api/register` | Create a new user   | 201 Created, 409 Duplicate, 422 Invalid input |
+| POST   | `/api/login`    | Login valid user    | 200 Created, 401 Invalid           |
 
 ## Git Workflow
 
@@ -94,6 +74,7 @@ Interactive API docs are available at http://127.0.0.1:8000/docs.
 ## Roadmap
 
 - [x] User registration
-- [ ] Login and sessions
+- [X] Login
+- [ ] sessions
 - [ ] Styling with Tailwind (match Figma designs)
 - [ ] Transactions, categories, budgets, and payment methods
