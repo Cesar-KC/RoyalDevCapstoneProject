@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router";
 
 function LoginPage() {
   const [form, setForm] = useState({
@@ -42,8 +43,7 @@ function LoginPage() {
 
   return (
     <div>
-      <h1>Log In BELOW</h1>
-      <p>Preview: {form.username}</p>
+      <h1>Budget App</h1>
       <form onSubmit={handleSubmit}>
         <div>
           <label>Username</label>
@@ -56,6 +56,9 @@ function LoginPage() {
         <button type="submit">Login</button>
       </form>
       {message && <p>{message}</p>} 
+      <p>
+        Don't have an account? <Link to="/register">Sign up</Link>
+      </p>
     </div>
   );
 }
