@@ -2,6 +2,7 @@ import os
 
 from dotenv import load_dotenv
 from sqlalchemy import URL, create_engine
+from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 load_dotenv()
 
@@ -15,3 +16,9 @@ DATABASE_URL = URL.create(
 )
 
 engine = create_engine(DATABASE_URL, pool_pre_ping=True)
+
+SessionLocal = sessionmaker(bind=engine, autoflush=False)
+
+
+class Base(DeclarativeBase):
+    pass
