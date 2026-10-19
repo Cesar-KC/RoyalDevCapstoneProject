@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router";
 
 function RegisterPage() {
   const [form, setForm] = useState({
@@ -59,7 +60,7 @@ function RegisterPage() {
 
   return (
     <div>
-      <h1>Create an account</h1>
+      <h1>Register</h1>
       <p>Preview: {form.username} ({form.name})</p>
       <form onSubmit={handleSubmit}>
         <div>
@@ -85,6 +86,9 @@ function RegisterPage() {
         <button type="submit">Sign up</button>
       </form>
       {message && <p>{message}</p>}
+      <p>
+        Already have an account? <Link to="/login">Log in</Link>
+      </p>
     </div>
   );
 }

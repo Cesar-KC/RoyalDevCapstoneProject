@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from database import SessionLocal
 from models import User
-from schemas import UserCreate, UserOut
+from schemas import UserCreate, UserOut, UserLogin
 
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -54,3 +54,17 @@ def register(user_in: UserCreate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=409, detail="Username or email already registered")
     db.refresh(user)
     return user
+
+
+
+@app.post("/api/login", response_model=UserOut, status_code=status.HTTP_200_OK)
+def login(user_in: UserLogin, db: Session = Depends(get_db)):
+    user = db.scalar(select(User).where(User.username == user_in.username)) #get user info from from db, where username matches
+
+    if user is None or not bcrypt.checkpw(             #user = None, means no username present
+        user_in.password.encode("utf-8"),              # False 'bcrpyt.checkpw' , means password does not match
+        user.password_hash.encode("utf-8"),
+    ):
+        raise HTTPException(status_code=401, detail="Invalid username or password")     
+
+    return user #Username is present and password entered matches, success
