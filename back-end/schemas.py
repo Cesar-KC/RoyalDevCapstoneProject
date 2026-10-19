@@ -18,3 +18,8 @@ class UserOut(BaseModel):
     name: str
     email: EmailStr
     created_at: datetime
+
+class UserLogin(BaseModel):
+    username: str = Field(min_length=1, max_length=50)
+    password: str = Field(min_length=1, max_length=72)
+
