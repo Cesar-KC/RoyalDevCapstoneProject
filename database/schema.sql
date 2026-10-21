@@ -76,16 +76,14 @@ CREATE TABLE budgets (
   id           CHAR(36)      NOT NULL DEFAULT (UUID()),
   user_id      CHAR(36)      NOT NULL,
   category_id  CHAR(36)      NOT NULL,
-  amount_limit DECIMAL(12,2) NOT NULL,
-  period_type  VARCHAR(10)   NOT NULL,
+  monthly_amount_budget DECIMAL(12,2) NOT NULL,
   start_date   DATE          NOT NULL,
   end_date     DATE          NULL,
   created_at   TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at   TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP
                              ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
-  CONSTRAINT chk_budgets_amount CHECK (amount_limit >= 0),
-  CONSTRAINT chk_budgets_period CHECK (period_type IN ('weekly', 'monthly')),
+  CONSTRAINT chk_budgets_amount CHECK (monthly_amount_budget >= 0),
   CONSTRAINT chk_budgets_dates  CHECK (end_date IS NULL OR end_date >= start_date),
   CONSTRAINT fk_budgets_user
     FOREIGN KEY (user_id) REFERENCES users (id)
