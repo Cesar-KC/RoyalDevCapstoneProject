@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 
 function LoginPage() {
+  const navigate = useNavigate(); 
   const [form, setForm] = useState({
     username: "",
     password: "",
@@ -18,7 +19,7 @@ function LoginPage() {
     setMessage("");
 
     try {
-      const response = await fetch("http://127.0.0.1:8000/api/login", {
+      const response = await fetch("/api/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -30,7 +31,7 @@ function LoginPage() {
       const data = await response.json();
 
       if (response.status === 200) {
-        setMessage(`Logged In. Welcome, ${data.name}.`);
+        navigate("/dashboard");
       } else if (response.status === 401) {
         setMessage(data.detail);
       } else {
