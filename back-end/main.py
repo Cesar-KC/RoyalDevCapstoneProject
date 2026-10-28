@@ -1,5 +1,5 @@
 import bcrypt
-from fastapi import Depends, FastAPI, HTTPException, status, Response
+from fastapi import Depends, FastAPI, HTTPException, status, Response, Cookie
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from database import SessionLocal
 from models import User, UserSession
 from schemas import UserCreate, UserOut, UserLogin
-from security import new_session_token, hash_token, session_expiry, SESSION_LIFETIME
+from security import new_session_token, hash_token, session_expiry, SESSION_LIFETIME, utc_now
 
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -27,6 +27,31 @@ def get_db():
         yield db
     finally:
         db.close()
+
+def get_current_user(
+    session_token: str | None = Cookie(default=None),
+    db: Session = Depends(get_db),
+) -> User:
+    
+    not_authenticated = HTTPException(status_code=401, detail="Not authenticated")
+
+    if session_token is None:
+        raise not_authenticated
+
+    user_session = db.scalar(
+        select(UserSession).where(UserSession.token_hash == hash_token(session_token))
+    )
+    if (
+        user_session is None
+        or user_session.is_revoked
+        or user_session.expires_at <= utc_now()
+    ):
+        raise not_authenticated
+
+    user = db.get(User, user_session.user_id)
+    if user is None:
+        raise not_authenticated
+    return user
 
 
 @app.post("/api/register", response_model=UserOut, status_code=status.HTTP_201_CREATED)
@@ -84,3 +109,28 @@ def login(user_in: UserLogin, response: Response, db: Session = Depends(get_db))
         secure=False,  # True in production (HTTPS only)
     )
     return user
+
+@app.get("/api/me", response_model=UserOut)
+def me(current_user: User = Depends(get_current_user)):
+    return current_user
+
+@app.post("/api/logout", status_code=status.HTTP_204_NO_CONTENT)
+def logout(
+    response: Response,
+    session_token: str | None = Cookie(default=None),
+    db: Session = Depends(get_db),
+):
+    if session_token is not None:
+        user_session = db.scalar(
+            select(UserSession).where(UserSession.token_hash == hash_token(session_token))
+        )
+        if user_session is not None and not user_session.is_revoked:
+            user_session.is_revoked = True
+            db.commit()
+
+    response.delete_cookie(
+        key="session_token",
+        httponly=True,
+        samesite="lax",
+        secure=False,  # True in production (HTTPS only)
+    )
