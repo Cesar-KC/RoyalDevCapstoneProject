@@ -1,166 +1,151 @@
-
 -- =====================================================================
--- Budget Tracker Database Schema  (v2 - updated class diagram)
+-- Budget App database schema
 -- Commerce Bank / UMKC Capstone - Fall 2026
--- Target: MySQL 8.0.16+ | Engine: InnoDB | Charset: utf8mb4
+-- MySQL 8.0+ | InnoDB | utf8mb4
 --
--- Full rebuild: DROPS and recreates every table. Use
--- budget_tracker_migration.sql instead if you need to keep existing data.
+-- DEVELOPMENT ONLY: drops and recreates every table. All data is lost.
+-- Run the whole file in MySQL Workbench as root (admin), not as budget_app_user.
 -- =====================================================================
 
-CREATE DATABASE IF NOT EXISTS db_budget_app;
+CREATE DATABASE IF NOT EXISTS db_budget_app
+  CHARACTER SET utf8mb4
+  COLLATE utf8mb4_0900_ai_ci;               
 USE db_budget_app;
 
-CREATE TABLE IF NOT EXISTS users (
-    id            INT AUTO_INCREMENT PRIMARY KEY,
-    username      VARCHAR(50)  NOT NULL UNIQUE,
-    name          VARCHAR(100) NOT NULL,
-    email         VARCHAR(255) NOT NULL UNIQUE,
-    password_hash VARCHAR(255) NOT NULL,
-    created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-    
-);
+-- Drop in reverse dependency order (children before parents)
+DROP TABLE IF EXISTS sessions;
+DROP TABLE IF EXISTS transactions;
+DROP TABLE IF EXISTS budget_allocations;
+DROP TABLE IF EXISTS budgets;
+DROP TABLE IF EXISTS payment_methods;
+DROP TABLE IF EXISTS categories;
+DROP TABLE IF EXISTS users;
+
 -- ---------------------------------------------------------------------
 -- users
 -- ---------------------------------------------------------------------
 CREATE TABLE users (
-  id            CHAR(36)     NOT NULL DEFAULT (UUID()),
+  id            INT          NOT NULL AUTO_INCREMENT,
   username      VARCHAR(50)  NOT NULL,
   name          VARCHAR(100) NOT NULL,
   email         VARCHAR(255) NOT NULL,
   password_hash VARCHAR(255) NOT NULL,
-  created_at    TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at    TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
-                             ON UPDATE CURRENT_TIMESTAMP,
+  created_at    TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at    TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
   PRIMARY KEY (id),
   UNIQUE KEY uq_users_username (username),
   UNIQUE KEY uq_users_email (email)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB;
 
 -- ---------------------------------------------------------------------
--- categories (id + type only; type is the label, e.g. Groceries, Bills)
+-- categories (name is the label, e.g. Groceries, Bills)
 -- ---------------------------------------------------------------------
 CREATE TABLE categories (
-  id   CHAR(36)     NOT NULL DEFAULT (UUID()),
-  type VARCHAR(100) NOT NULL,
-  PRIMARY KEY (id)
-  -- , UNIQUE KEY uq_categories_type (type)   -- optional: no duplicate labels
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  id   INT          NOT NULL AUTO_INCREMENT,
+  kind VARCHAR(10)  NOT NULL,
+  name VARCHAR(100) NOT NULL,
 
--- ---------------------------------------------------------------------
--- payment_methods (fabricated card data only)
--- is_default = TRUE marks the user's main payment method; all others
--- for that user should be FALSE (enforce in the application layer).
--- ---------------------------------------------------------------------
-CREATE TABLE payment_methods (
-  id           CHAR(36)    NOT NULL DEFAULT (UUID()),
-  user_id      CHAR(36)    NOT NULL,
-  nickname     VARCHAR(50) NOT NULL,
-  card_last4   CHAR(4)     NOT NULL,
-  card_network ENUM('VISA', 'MASTER', 'AMEX', 'DISCOVER', 'OTHER') NULL,
-  expire_date  DATE        NOT NULL,
-  is_default   BOOLEAN     NOT NULL DEFAULT FALSE,
-  created_at   TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
-  CONSTRAINT fk_payment_methods_user
-    FOREIGN KEY (user_id) REFERENCES users (id)
-    ON DELETE CASCADE ON UPDATE CASCADE,
-  KEY idx_payment_methods_user (user_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  UNIQUE KEY uq_categories_name (name),
+  CONSTRAINT chk_categories_kind   CHECK (kind IN ('income', 'need', 'want'))
+) ENGINE=InnoDB;
 
 -- ---------------------------------------------------------------------
 -- budgets
 -- ---------------------------------------------------------------------
 CREATE TABLE budgets (
-  id           CHAR(36)      NOT NULL DEFAULT (UUID()),
-  user_id      CHAR(36)      NOT NULL,
-  category_id  CHAR(36)      NOT NULL,
-  monthly_amount_budget DECIMAL(12,2) NOT NULL,
-  start_date   DATE          NOT NULL,
-  end_date     DATE          NULL,
-  created_at   TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at   TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP
-                             ON UPDATE CURRENT_TIMESTAMP,
+  id                    INT               NOT NULL AUTO_INCREMENT,
+  user_id               INT               NOT NULL,
+  expected_amount       DECIMAL(12,2)     NOT NULL,
+  budget_month          DATE              NOT NULL,
+  needs_pct             TINYINT UNSIGNED  NOT NULL,
+  wants_pct             TINYINT UNSIGNED  NOT NULL,
+  savings_pct           TINYINT UNSIGNED  NOT NULL,
+  created_at            TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at            TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
   PRIMARY KEY (id),
-  CONSTRAINT chk_budgets_amount CHECK (monthly_amount_budget >= 0),
-  CONSTRAINT chk_budgets_dates  CHECK (end_date IS NULL OR end_date >= start_date),
+  UNIQUE KEY uq_budgets_user_month (user_id, budget_month),  -- each user, gets only one budget per month
+  CONSTRAINT chk_budgets_month CHECK (DAY(budget_month) = 1), -- ensures budget_month stores only first day of months 
+  CONSTRAINT chk_budgets_amount CHECK (expected_amount >= 0),
+  CONSTRAINT chk_budgets_split CHECK (needs_pct + wants_pct + savings_pct = 100),
   CONSTRAINT fk_budgets_user
-    FOREIGN KEY (user_id) REFERENCES users (id)
-    ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT fk_budgets_category
-    FOREIGN KEY (category_id) REFERENCES categories (id)
-    ON DELETE CASCADE ON UPDATE CASCADE,
-  KEY idx_budgets_user_category (user_id, category_id),
-  KEY idx_budgets_category (category_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+) ENGINE=InnoDB;
 
 -- ---------------------------------------------------------------------
--- transactions (unchanged)
--- category_id says WHAT the transaction was for;
--- transaction_type says whether it is income or expense.
+-- Allocation of budget defined by User, one row per expense category(Rent, Bills, etc) per monthly budget ($0 allowed)
+-- ---------------------------------------------------------------------
+CREATE TABLE budget_allocations (
+  id                    INT           NOT NULL AUTO_INCREMENT,
+  budget_id             INT           NOT NULL,
+  category_id           INT           NOT NULL,
+  amount                DECIMAL(12,2) NOT NULL,
+  created_at            TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at            TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_budget_allocations_budget_category (budget_id, category_id),
+  CONSTRAINT chk_budget_allocations_amount CHECK (amount >= 0), 
+  CONSTRAINT fk_budget_allocations_budget
+    FOREIGN KEY (budget_id) REFERENCES budgets (id) ON DELETE CASCADE,
+  CONSTRAINT fk_budget_allocations_category
+    FOREIGN KEY (category_id) REFERENCES categories (id)
+  
+) ENGINE=InnoDB;
+
+-- ---------------------------------------------------------------------
+-- transactions
+-- category_id = what it was for; transaction_type = income or expense
 -- ---------------------------------------------------------------------
 CREATE TABLE transactions (
-  id                CHAR(36)      NOT NULL DEFAULT (UUID()),
-  user_id           CHAR(36)      NOT NULL,
-  category_id       CHAR(36)      NULL,
-  payment_method_id CHAR(36)      NULL,
+  id                INT           NOT NULL AUTO_INCREMENT,
+  user_id           INT           NOT NULL,
+  category_id       INT           NULL,        -- tracks the transaction category(groceries, salary, refund, bills, etc)
   amount            DECIMAL(12,2) NOT NULL,
-  transaction_type  VARCHAR(10)   NOT NULL,
+  description       VARCHAR(255)  NULL,   -- notes for transation, can be empty
+  transaction_type  VARCHAR(10)   NOT NULL,      -- tracks if income or expense
   transaction_date  DATE          NOT NULL DEFAULT (CURRENT_DATE),
-  created_at        TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  created_at        TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at        TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
   PRIMARY KEY (id),
-  CONSTRAINT chk_transactions_amount CHECK (amount > 0),
+  CONSTRAINT chk_transactions_amount CHECK (amount > 0),  -- no negative amount, expense transaction type will determine decicsion to remove from budget allocation
   CONSTRAINT chk_transactions_type   CHECK (transaction_type IN ('income', 'expense')),
   CONSTRAINT fk_transactions_user
-    FOREIGN KEY (user_id) REFERENCES users (id)
-    ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
   CONSTRAINT fk_transactions_category
-    FOREIGN KEY (category_id) REFERENCES categories (id)
-    ON DELETE SET NULL ON UPDATE CASCADE,
-  CONSTRAINT fk_transactions_payment_method
-    FOREIGN KEY (payment_method_id) REFERENCES payment_methods (id)
-    ON DELETE SET NULL ON UPDATE CASCADE,
+    FOREIGN KEY (category_id) REFERENCES categories (id) ON DELETE SET NULL,
   KEY idx_transactions_user_date (user_id, transaction_date),
-  KEY idx_transactions_category (category_id),
-  KEY idx_transactions_payment_method (payment_method_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  KEY idx_transactions_category (category_id)
+) ENGINE=InnoDB;
 
 -- ---------------------------------------------------------------------
 -- sessions
+-- Stores a SHA-256 hash of the session token, never the token itself.
 -- ---------------------------------------------------------------------
 CREATE TABLE sessions (
-  id            CHAR(36)     NOT NULL DEFAULT (UUID()),
-  user_id       CHAR(36)     NOT NULL,
-  session_token VARCHAR(255) NOT NULL,
-  expires_at    TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  created_at    TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  is_revoked    BOOLEAN      NOT NULL DEFAULT FALSE,
+  id         INT      NOT NULL AUTO_INCREMENT,
+  user_id    INT      NOT NULL,
+  token_hash CHAR(64) NOT NULL,
+  expires_at TIMESTAMP NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  is_revoked BOOLEAN  NOT NULL DEFAULT FALSE,
+
   PRIMARY KEY (id),
-  UNIQUE KEY uq_sessions_token (session_token),
+  UNIQUE KEY uq_sessions_token_hash (token_hash),
   CONSTRAINT fk_sessions_user
-    FOREIGN KEY (user_id) REFERENCES users (id)
-    ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
   KEY idx_sessions_user (user_id),
   KEY idx_sessions_expires (expires_at)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB;
 
 -- ---------------------------------------------------------------------
 -- Seed data: category labels
 -- ---------------------------------------------------------------------
-INSERT INTO categories (type) VALUES
-  ('Groceries'),
-  ('Bills'),
-  ('Dining Out'),
-  ('Rent'),
-  ('Utilities'),
-  ('Transportation'),
-  ('Entertainment'),
-  ('Healthcare'),
-  ('Shopping'),
-  ('Salary'),
-  ('Freelance'),
-  ('Gifts'),
-  ('Other Income') 
-  ;
-
+INSERT INTO categories (name, kind) VALUES
+('Groceries', 'need'), ('Bills', 'need'), ('Rent', 'need'),
+('Utilities', 'need'), ('Transportation', 'need'), ('Healthcare', 'need'),
+('Dining Out', 'want'), ('Entertainment', 'want'), ('Shopping', 'want'),
+('Salary', 'income'), ('Freelance', 'income'), ('Gifts', 'income'), ('Refund', 'income'), ('Other Income', 'income');
