@@ -1,12 +1,13 @@
 import bcrypt
-from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi import Depends, FastAPI, HTTPException, status, Response
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from database import SessionLocal
-from models import User
+from models import User, UserSession
 from schemas import UserCreate, UserOut, UserLogin
+from security import new_session_token, hash_token, session_expiry, SESSION_LIFETIME
 
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -56,15 +57,30 @@ def register(user_in: UserCreate, db: Session = Depends(get_db)):
     return user
 
 
-
 @app.post("/api/login", response_model=UserOut, status_code=status.HTTP_200_OK)
-def login(user_in: UserLogin, db: Session = Depends(get_db)):
-    user = db.scalar(select(User).where(User.username == user_in.username)) #get user info from from db, where username matches
+def login(user_in: UserLogin, response: Response, db: Session = Depends(get_db)):
+    user = db.scalar(select(User).where(User.username == user_in.username))
 
-    if user is None or not bcrypt.checkpw(             #user = None, means no username present
-        user_in.password.encode("utf-8"),              # False 'bcrpyt.checkpw' , means password does not match
+    if user is None or not bcrypt.checkpw(
+        user_in.password.encode("utf-8"),
         user.password_hash.encode("utf-8"),
     ):
-        raise HTTPException(status_code=401, detail="Invalid username or password")     
+        raise HTTPException(status_code=401, detail="Invalid username or password")
 
-    return user #Username is present and password entered matches, success
+    token = new_session_token()
+    db.add(UserSession(
+        user_id=user.id,
+        token_hash=hash_token(token),
+        expires_at=session_expiry(),
+    ))
+    db.commit()
+
+    response.set_cookie(
+        key="session_token",
+        value=token,
+        max_age=int(SESSION_LIFETIME.total_seconds()),
+        httponly=True,
+        samesite="lax",
+        secure=False,  # True in production (HTTPS only)
+    )
+    return user
