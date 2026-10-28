@@ -1,12 +1,13 @@
 import bcrypt
-from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi import Depends, FastAPI, HTTPException, status, Response, Cookie
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from database import SessionLocal
-from models import User
+from models import User, UserSession
 from schemas import UserCreate, UserOut, UserLogin
+from security import new_session_token, hash_token, session_expiry, SESSION_LIFETIME, utc_now
 
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -26,6 +27,31 @@ def get_db():
         yield db
     finally:
         db.close()
+
+def get_current_user(
+    session_token: str | None = Cookie(default=None),
+    db: Session = Depends(get_db),
+) -> User:
+    
+    not_authenticated = HTTPException(status_code=401, detail="Not authenticated")
+
+    if session_token is None:
+        raise not_authenticated
+
+    user_session = db.scalar(
+        select(UserSession).where(UserSession.token_hash == hash_token(session_token))
+    )
+    if (
+        user_session is None
+        or user_session.is_revoked
+        or user_session.expires_at <= utc_now()
+    ):
+        raise not_authenticated
+
+    user = db.get(User, user_session.user_id)
+    if user is None:
+        raise not_authenticated
+    return user
 
 
 @app.post("/api/register", response_model=UserOut, status_code=status.HTTP_201_CREATED)
@@ -56,15 +82,55 @@ def register(user_in: UserCreate, db: Session = Depends(get_db)):
     return user
 
 
-
 @app.post("/api/login", response_model=UserOut, status_code=status.HTTP_200_OK)
-def login(user_in: UserLogin, db: Session = Depends(get_db)):
-    user = db.scalar(select(User).where(User.username == user_in.username)) #get user info from from db, where username matches
+def login(user_in: UserLogin, response: Response, db: Session = Depends(get_db)):
+    user = db.scalar(select(User).where(User.username == user_in.username))
 
-    if user is None or not bcrypt.checkpw(             #user = None, means no username present
-        user_in.password.encode("utf-8"),              # False 'bcrpyt.checkpw' , means password does not match
+    if user is None or not bcrypt.checkpw(
+        user_in.password.encode("utf-8"),
         user.password_hash.encode("utf-8"),
     ):
-        raise HTTPException(status_code=401, detail="Invalid username or password")     
+        raise HTTPException(status_code=401, detail="Invalid username or password")
 
-    return user #Username is present and password entered matches, success
+    token = new_session_token()
+    db.add(UserSession(
+        user_id=user.id,
+        token_hash=hash_token(token),
+        expires_at=session_expiry(),
+    ))
+    db.commit()
+
+    response.set_cookie(
+        key="session_token",
+        value=token,
+        max_age=int(SESSION_LIFETIME.total_seconds()),
+        httponly=True,
+        samesite="lax",
+        secure=False,  # True in production (HTTPS only)
+    )
+    return user
+
+@app.get("/api/me", response_model=UserOut)
+def me(current_user: User = Depends(get_current_user)):
+    return current_user
+
+@app.post("/api/logout", status_code=status.HTTP_204_NO_CONTENT)
+def logout(
+    response: Response,
+    session_token: str | None = Cookie(default=None),
+    db: Session = Depends(get_db),
+):
+    if session_token is not None:
+        user_session = db.scalar(
+            select(UserSession).where(UserSession.token_hash == hash_token(session_token))
+        )
+        if user_session is not None and not user_session.is_revoked:
+            user_session.is_revoked = True
+            db.commit()
+
+    response.delete_cookie(
+        key="session_token",
+        httponly=True,
+        samesite="lax",
+        secure=False,  # True in production (HTTPS only)
+    )
