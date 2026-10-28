@@ -15,7 +15,11 @@ DATABASE_URL = URL.create(
     database=os.getenv("DB_NAME"),
 )
 
-engine = create_engine(DATABASE_URL, pool_pre_ping=True)
+engine = create_engine(
+    DATABASE_URL, 
+    pool_pre_ping=True,
+    connect_args={"init_command": "SET time_zone = '+00:00'"},
+)
 
 SessionLocal = sessionmaker(bind=engine, autoflush=False)
 
