@@ -298,7 +298,7 @@ function BudgetPage() {
       <div>
         <h1>Budget</h1>
         <p>
-          {monthLabel(budget.month)} Expected Budget: {formatDollars(income)}
+          {monthLabel(budget.month)} Expected Budget Allowance: {formatDollars(income)}
         </p>
         <p>
           Plan: {savedPlan ? savedPlan.name : "Custom"} ({budget.needs_pct} / {budget.wants_pct} /{" "}
