@@ -3,6 +3,7 @@ import LoginPage from "./LoginPage";
 import RegisterPage from "./RegisterPage";
 import DashboardPage from "./DashboardPage";
 import BudgetPage from "./BudgetPage";
+import TransactionsPage from "./TransactionsPage";
 
 
 function App() {
@@ -13,6 +14,7 @@ function App() {
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/dashboard" element={<DashboardPage />} />
       <Route path="/budget" element={<BudgetPage />} />
+      <Route path="/transactions" element={<TransactionsPage />} />
       <Route path="*" element={<h1>Page not found</h1>} />
     </Routes>
   );

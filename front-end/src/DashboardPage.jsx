@@ -37,9 +37,9 @@ function DashboardPage() {
     <div>
       <h1>Welcome, {user.name}</h1>
       <button onClick={handleLogout}>Log out</button>
-       <p>
-         <Link to="/budget">Budgets</Link>
-      </p>
+      <nav>
+        <Link to="/budget">Budget</Link> · <Link to="/transactions">Transactions</Link>
+      </nav>
     </div>
   );
 }
