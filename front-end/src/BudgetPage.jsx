@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 
 // Display copy of the plans, for the live preview only.
 // The server keeps its own table and decides the real percentages.
@@ -143,6 +143,10 @@ function BudgetPage() {
           wantsPct={budget.wants_pct}
           savingsPct={budget.savings_pct}
         />
+
+         <p>
+            <Link to="/dashboard">Dashboard</Link>
+        </p>
       </div>
     );
   }
@@ -198,6 +202,9 @@ function BudgetPage() {
       </form>
 
       {message && <p>{message}</p>}
+      <p>
+         <Link to="/dashboard">Dashboard</Link>
+      </p>
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 
 function DashboardPage() {
   const navigate = useNavigate();
@@ -37,6 +37,9 @@ function DashboardPage() {
     <div>
       <h1>Welcome, {user.name}</h1>
       <button onClick={handleLogout}>Log out</button>
+       <p>
+         <Link to="/budget">Budgets</Link>
+      </p>
     </div>
   );
 }
