@@ -1,6 +1,9 @@
-from datetime import datetime
+from datetime import date, datetime
+from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+
+MONTH_PATTERN = r"^\d{4}-(0[1-9]|1[0-2])$"
 
 
 class UserCreate(BaseModel):
@@ -23,3 +26,24 @@ class UserLogin(BaseModel):
     username: str = Field(min_length=1, max_length=50)
     password: str = Field(min_length=1, max_length=72)
 
+class BudgetCreate(BaseModel):
+    month: str = Field(pattern=MONTH_PATTERN) #month format check
+    expected_amount: int = Field(ge=1, le=1_000_000_000) # amount check
+    plan: Literal["balanced", "save_more", "essentials"] #only these plans accepted
+
+
+class BudgetOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    month: str = Field(validation_alias="budget_month")
+    expected_amount: int
+    needs_pct: int
+    wants_pct: int
+    savings_pct: int
+    created_at: datetime
+
+    @field_validator("month", mode="before")
+    @classmethod
+    def format_month(cls, value: date) -> str:
+        return value.strftime("%Y-%m")
