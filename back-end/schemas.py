@@ -1,5 +1,6 @@
 from datetime import date, datetime
 from typing import Literal
+from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
@@ -67,3 +68,22 @@ class CategoryOut(BaseModel):
     id: int
     name: str
     kind: str
+
+class TransactionCreate(BaseModel):
+    transaction_type: Literal["income", "expense"]
+    amount: Decimal = Field(gt=0, le=1_000_000_000, max_digits=12, decimal_places=2)
+    category_id: int
+    description: str | None = Field(default=None, max_length=255) #can be null, defaults to None
+    transaction_date: date
+
+
+class TransactionOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    transaction_type: str
+    amount: float
+    category_id: int | None
+    description: str | None
+    transaction_date: date
+    created_at: datetime
