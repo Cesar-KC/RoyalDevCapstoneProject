@@ -9,8 +9,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from database import SessionLocal
-from models import User, UserSession, UserBudget, Category, BudgetAllocation
-from schemas import UserCreate, UserOut, UserLogin, BudgetCreate, BudgetOut, CategoryOut, MONTH_PATTERN
+from models import User, UserSession, UserBudget, Category, BudgetAllocation, Transaction
+from schemas import UserCreate, UserOut, UserLogin, BudgetCreate, BudgetOut, CategoryOut, TransactionCreate, TransactionOut, MONTH_PATTERN
 from security import new_session_token, hash_token, session_expiry, SESSION_LIFETIME, utc_now
 
 
@@ -70,6 +70,11 @@ def get_current_user(
 
 def month_to_date(month: str) -> date:
     return date.fromisoformat(f"{month}-01")
+
+def next_month(first_day: date) -> date:
+    if first_day.month == 12:
+        return date(first_day.year + 1, 1, 1)
+    return date(first_day.year, first_day.month + 1, 1)
 
 
 
@@ -238,3 +243,49 @@ def list_categories(
     db: Session = Depends(get_db),
 ):
     return db.scalars(select(Category).order_by(Category.id)).all()
+
+
+@app.get("/api/transactions", response_model=list[TransactionOut])
+def list_transactions(
+    month: str = Query(pattern=MONTH_PATTERN),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    start = month_to_date(month)
+    return db.scalars(
+        select(Transaction)
+        .where(
+            Transaction.user_id == current_user.id,
+            Transaction.transaction_date >= start,
+            Transaction.transaction_date < next_month(start),
+        )
+        .order_by(Transaction.transaction_date.desc(), Transaction.id.desc())
+    ).all()
+
+@app.post("/api/transactions", response_model=TransactionOut, status_code=status.HTTP_201_CREATED)
+def create_transaction(
+    transaction_in: TransactionCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    category = db.get(Category, transaction_in.category_id)
+    allowed_kinds = ["income"] if transaction_in.transaction_type == "income" else ["need", "want"]
+    if category is None or category.kind not in allowed_kinds:
+        raise HTTPException(status_code=422, detail="Category doesn't match the transaction type")
+
+    description = (transaction_in.description or "").strip() or None
+
+    transaction = Transaction(
+        user_id=current_user.id,
+        category_id=category.id,
+        amount=transaction_in.amount,
+        description=description,
+        transaction_type=transaction_in.transaction_type,
+        transaction_date=transaction_in.transaction_date,
+    )
+    db.add(transaction)
+    db.commit()
+    db.refresh(transaction)
+    
+    return transaction
+

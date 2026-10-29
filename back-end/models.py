@@ -60,4 +60,17 @@ class BudgetAllocation(Base):
     amount: Mapped[Decimal] = mapped_column(Numeric(12, 2))
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(server_default=func.now())
+
+class Transaction(Base):
+    __tablename__ = "transactions"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    category_id: Mapped[int | None] = mapped_column(ForeignKey("categories.id")) #Can be Null
+    amount: Mapped[Decimal] = mapped_column(Numeric(12, 2))
+    description: Mapped[str | None] = mapped_column(String(255)) #Can be Null
+    transaction_type: Mapped[str] = mapped_column(String(10))
+    transaction_date: Mapped[date] = mapped_column()
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(server_default=func.now())
  
