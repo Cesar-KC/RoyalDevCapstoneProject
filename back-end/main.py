@@ -1,15 +1,20 @@
 import bcrypt
-from fastapi import Depends, FastAPI, HTTPException, status, Response, Cookie
+from datetime import date
+
+from fastapi import Depends, FastAPI, HTTPException, status, Response, Cookie, Query
+from fastapi.middleware.cors import CORSMiddleware
+
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from database import SessionLocal
-from models import User, UserSession
-from schemas import UserCreate, UserOut, UserLogin
+from models import User, UserSession, UserBudget
+from schemas import UserCreate, UserOut, UserLogin, BudgetCreate, BudgetOut, MONTH_PATTERN
 from security import new_session_token, hash_token, session_expiry, SESSION_LIFETIME, utc_now
 
-from fastapi.middleware.cors import CORSMiddleware
+
+
 
 app = FastAPI(title="Budget App API")
 
@@ -19,6 +24,15 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+
+PLAN_SPLITS = {
+    "balanced": (50, 30, 20),
+    "save_more": (40, 20, 40),
+    "essentials": (60, 20, 20),
+}
+
 
 
 def get_db():
@@ -52,6 +66,11 @@ def get_current_user(
     if user is None:
         raise not_authenticated
     return user
+
+def month_to_date(month: str) -> date:
+    return date.fromisoformat(f"{month}-01")
+
+
 
 
 @app.post("/api/register", response_model=UserOut, status_code=status.HTTP_201_CREATED)
@@ -134,3 +153,56 @@ def logout(
         samesite="lax",
         secure=False,  # True in production (HTTPS only)
     )
+
+@app.get("/api/budgets", response_model=BudgetOut)
+def get_budget(
+    month: str = Query(pattern=MONTH_PATTERN),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    budget = db.scalar(
+        select(UserBudget).where(
+            UserBudget.user_id == current_user.id,
+            UserBudget.budget_month == month_to_date(month),
+        )
+    )
+    if budget is None:
+        raise HTTPException(status_code=404, detail="No budget for this month")
+    return budget
+
+@app.post("/api/budgets", response_model=BudgetOut, status_code=status.HTTP_201_CREATED)
+def create_budget(
+    budget_in: BudgetCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    budget_month = month_to_date(budget_in.month)
+
+    existing = db.scalar(
+        select(UserBudget).where(
+            UserBudget.user_id == current_user.id,
+            UserBudget.budget_month == budget_month,
+        )
+    )
+    if existing is not None:
+        raise HTTPException(status_code=409, detail="A budget already exists for this month")
+
+    needs_pct, wants_pct, savings_pct = PLAN_SPLITS[budget_in.plan]
+    budget = UserBudget(
+        user_id=current_user.id,
+        budget_month=budget_month,
+        expected_amount=budget_in.expected_amount,
+        needs_pct=needs_pct,
+        wants_pct=wants_pct,
+        savings_pct=savings_pct,
+    )
+    
+    db.add(budget)
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="A budget already exists for this month")
+    db.refresh(budget)
+
+    return budget
