@@ -262,6 +262,21 @@ def list_transactions(
         .order_by(Transaction.transaction_date.desc(), Transaction.id.desc())
     ).all()
 
+
+@app.get("/api/transactions/recent", response_model=list[TransactionOut])
+def recent_transactions(
+    limit: int = Query(default=3, ge=1, le=20),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    return db.scalars(
+        select(Transaction)
+        .where(Transaction.user_id == current_user.id)
+        .order_by(Transaction.transaction_date.desc(), Transaction.id.desc())
+        .limit(limit)
+    ).all()
+
+
 @app.post("/api/transactions", response_model=TransactionOut, status_code=status.HTTP_201_CREATED)
 def create_transaction(
     transaction_in: TransactionCreate,
