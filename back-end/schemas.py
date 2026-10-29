@@ -26,11 +26,23 @@ class UserLogin(BaseModel):
     username: str = Field(min_length=1, max_length=50)
     password: str = Field(min_length=1, max_length=72)
 
+
+class AllocationIn(BaseModel):
+    category_id: int
+    amount: int = Field(ge=0, le=1_000_000_000)
+
+
+class AllocationOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    category_id: int
+    amount: int
+
 class BudgetCreate(BaseModel):
     month: str = Field(pattern=MONTH_PATTERN) #month format check
     expected_amount: int = Field(ge=1, le=1_000_000_000) # amount check
     plan: Literal["balanced", "save_more", "essentials"] #only these plans accepted
-
+    allocations: list[AllocationIn] = Field(default_factory=list)
 
 class BudgetOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -42,8 +54,16 @@ class BudgetOut(BaseModel):
     wants_pct: int
     savings_pct: int
     created_at: datetime
+    allocations: list[AllocationOut]
 
     @field_validator("month", mode="before")
     @classmethod
     def format_month(cls, value: date) -> str:
         return value.strftime("%Y-%m")
+    
+class CategoryOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    kind: str

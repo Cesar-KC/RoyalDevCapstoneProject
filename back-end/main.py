@@ -9,10 +9,9 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from database import SessionLocal
-from models import User, UserSession, UserBudget
-from schemas import UserCreate, UserOut, UserLogin, BudgetCreate, BudgetOut, MONTH_PATTERN
+from models import User, UserSession, UserBudget, Category, BudgetAllocation
+from schemas import UserCreate, UserOut, UserLogin, BudgetCreate, BudgetOut, CategoryOut, MONTH_PATTERN
 from security import new_session_token, hash_token, session_expiry, SESSION_LIFETIME, utc_now
-
 
 
 
@@ -42,6 +41,7 @@ def get_db():
     finally:
         db.close()
 
+
 def get_current_user(
     session_token: str | None = Cookie(default=None),
     db: Session = Depends(get_db),
@@ -66,6 +66,7 @@ def get_current_user(
     if user is None:
         raise not_authenticated
     return user
+
 
 def month_to_date(month: str) -> date:
     return date.fromisoformat(f"{month}-01")
@@ -129,9 +130,11 @@ def login(user_in: UserLogin, response: Response, db: Session = Depends(get_db))
     )
     return user
 
+
 @app.get("/api/me", response_model=UserOut)
 def me(current_user: User = Depends(get_current_user)):
     return current_user
+
 
 @app.post("/api/logout", status_code=status.HTTP_204_NO_CONTENT)
 def logout(
@@ -154,6 +157,7 @@ def logout(
         secure=False,  # True in production (HTTPS only)
     )
 
+
 @app.get("/api/budgets", response_model=BudgetOut)
 def get_budget(
     month: str = Query(pattern=MONTH_PATTERN),
@@ -169,6 +173,7 @@ def get_budget(
     if budget is None:
         raise HTTPException(status_code=404, detail="No budget for this month")
     return budget
+
 
 @app.post("/api/budgets", response_model=BudgetOut, status_code=status.HTTP_201_CREATED)
 def create_budget(
@@ -187,6 +192,23 @@ def create_budget(
     if existing is not None:
         raise HTTPException(status_code=409, detail="A budget already exists for this month")
 
+    allowed_ids = set(
+        db.scalars(select(Category.id).where(Category.kind.in_(["need", "want"]))).all()
+    )
+    amounts = {}
+    for allocation in budget_in.allocations:
+        if allocation.category_id not in allowed_ids:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Category {allocation.category_id} can't be allocated",
+            )
+        if allocation.category_id in amounts:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Category {allocation.category_id} appears more than once",
+            )
+        amounts[allocation.category_id] = allocation.amount
+
     needs_pct, wants_pct, savings_pct = PLAN_SPLITS[budget_in.plan]
     budget = UserBudget(
         user_id=current_user.id,
@@ -195,8 +217,11 @@ def create_budget(
         needs_pct=needs_pct,
         wants_pct=wants_pct,
         savings_pct=savings_pct,
+        allocations=[
+            BudgetAllocation(category_id=category_id, amount=amounts.get(category_id, 0))
+            for category_id in sorted(allowed_ids)
+        ],
     )
-    
     db.add(budget)
     try:
         db.commit()
@@ -204,5 +229,12 @@ def create_budget(
         db.rollback()
         raise HTTPException(status_code=409, detail="A budget already exists for this month")
     db.refresh(budget)
-
     return budget
+
+
+@app.get("/api/categories", response_model=list[CategoryOut])
+def list_categories(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    return db.scalars(select(Category).order_by(Category.id)).all()
