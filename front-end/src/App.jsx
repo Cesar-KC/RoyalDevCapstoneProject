@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from "react-router";
 import LoginPage from "./LoginPage";
 import RegisterPage from "./RegisterPage";
 import DashboardPage from "./DashboardPage";
+import BudgetPage from "./BudgetPage";
 
 
 function App() {
@@ -11,6 +12,7 @@ function App() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/dashboard" element={<DashboardPage />} />
+      <Route path="/budget" element={<BudgetPage />} />
       <Route path="*" element={<h1>Page not found</h1>} />
     </Routes>
   );
