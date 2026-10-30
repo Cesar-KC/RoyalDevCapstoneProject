@@ -145,4 +145,5 @@ All endpoints except register and login require a valid session cookie; otherwis
 - [ ] Session inactivity timeout (30 minutes of inactivity logs the user out)
 - [ ] Profile and settings
 - [ ] Notifications
+- [ ] Automatic Testing
 - [ ] Deployment
