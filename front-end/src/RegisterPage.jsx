@@ -1,6 +1,10 @@
 import { useState } from "react";
 import { Link } from "react-router";
 
+const inputClass =
+  "w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100";
+const labelClass = "text-sm font-semibold text-slate-700";
+
 function RegisterPage() {
   const [form, setForm] = useState({
     username: "",
@@ -58,39 +62,53 @@ function RegisterPage() {
     }
   }
 
-  return (
-    <div>
-      <h1>Register</h1>
-      <p>Preview: {form.username} ({form.name})</p>
-      <form onSubmit={handleSubmit}>
-        <div>
-          <label>Username</label>
-          <input name="username" value={form.username} onChange={handleChange} />
-        </div>
-        <div>
-          <label>Name</label>
-          <input name="name" value={form.name} onChange={handleChange} />
-        </div>
-        <div>
-          <label>Email</label>
-          <input name="email" type="email" value={form.email} onChange={handleChange} />
-        </div>
-        <div>
-          <label>Password</label>
-          <input name="password" type="password" value={form.password} onChange={handleChange} />
-        </div>
-        <div>
-          <label>Confirm password</label>
-          <input name="confirmPassword" type="password" value={form.confirmPassword} onChange={handleChange} />
-        </div>
-        <button type="submit">Sign up</button>
-      </form>
-      {message && <p>{message}</p>}
-      <p>
-        Already have an account? <Link to="/login">Log in</Link>
-      </p>
+
+    return (
+    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
+      <div className="w-full max-w-xl rounded-3xl border border-slate-200 bg-white p-10 shadow-xl shadow-slate-200/60">
+        <h1 className="text-4xl font-medium tracking-tight text-[#1b2559]">Register</h1>
+
+        <form onSubmit={handleSubmit} className="mt-8 grid grid-cols-2 gap-x-4 gap-y-6">
+          <div className="flex flex-col gap-2">
+            <label className={labelClass}>Username</label>
+            <input name="username" value={form.username} onChange={handleChange} className={inputClass} />
+          </div>
+          <div className="flex flex-col gap-2">
+            <label className={labelClass}>Name</label>
+            <input name="name" value={form.name} onChange={handleChange} className={inputClass} />
+          </div>
+          <div className="col-span-2 flex flex-col gap-2">
+            <label className={labelClass}>Email</label>
+            <input name="email" type="email" value={form.email} onChange={handleChange} className={inputClass} />
+          </div>
+          <div className="flex flex-col gap-2">
+            <label className={labelClass}>Password</label>
+            <input name="password" type="password" value={form.password} onChange={handleChange} className={inputClass} />
+          </div>
+          <div className="flex flex-col gap-2">
+            <label className={labelClass}>Confirm password</label>
+            <input name="confirmPassword" type="password" value={form.confirmPassword} onChange={handleChange} className={inputClass} />
+          </div>
+          <button
+            type="submit"
+            className="col-span-2 mt-2 w-full rounded-xl bg-[#3563e3] py-3.5 font-semibold text-white shadow-lg shadow-blue-500/30 transition hover:bg-[#2b54cc]"
+          >
+            Sign up
+          </button>
+        </form>
+
+        {message && <p className="mt-4 text-sm text-slate-700">{message}</p>}
+
+        <p className="mt-6 text-center text-sm text-slate-500">
+          Already have an account?{" "}
+          <Link to="/login" className="font-semibold text-[#3563e3] hover:underline">
+            Log in
+          </Link>
+        </p>
+      </div>
     </div>
   );
+  
 }
 
 export default RegisterPage;

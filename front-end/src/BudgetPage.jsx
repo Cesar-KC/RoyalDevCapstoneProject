@@ -10,9 +10,20 @@ const PLANS = [
   { id: "essentials", name: "Essentials", needs: 60, wants: 20, savings: 20 },
 ];
 
-const WARNING_COLOR = "#b45309";
-const DANGER_COLOR = "#b91c1c";
-const SUCCESS_COLOR = "#15803d";
+// Shared looks (same values as the login, register, and dashboard pages)
+const NAVY = "text-[#1b2559]";
+const cardClass = "rounded-3xl border border-slate-200 bg-white p-8 shadow-xl shadow-slate-200/60";
+const inputClass =
+  "w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100";
+const labelClass = "text-sm font-semibold text-slate-700";
+const linkClass = "text-sm font-semibold text-[#3563e3] hover:underline";
+
+// Soft colored boxes for plan messages
+const NOTE = {
+  warning: "rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-800",
+  danger: "rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700",
+  success: "rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-700",
+};
 
 // The user's local month, e.g. "2026-10"
 function currentMonth() {
@@ -57,17 +68,22 @@ function PlanBlock({ title, pct, target, categories, amountFor, values, onChange
   if (difference < 0) status = `${formatDollars(-difference)} over target`;
 
   return (
-    <fieldset>
-      <legend>
-        {title} ({pct}%): Target {formatDollars(target)} · Expected spending{" "}
-        {formatDollars(expected)} · {status}
-      </legend>
+    <section className={cardClass}>
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 className={`text-xl ${NAVY}`}>
+          {title} ({pct}%)
+        </h2>
+        <p className="text-sm text-slate-500">
+          Target {formatDollars(target)} · Expected spending {formatDollars(expected)} ·{" "}
+          <span className={difference < 0 ? "font-semibold text-amber-700" : ""}>{status}</span>
+        </p>
+      </div>
 
-      {categories.map((category) => (
-        <div key={category.id}>
-          <label>
-            {category.name}{" "}
-            {onChange ? (
+      {onChange ? (
+        <div className="mt-6 grid gap-4 sm:grid-cols-2">
+          {categories.map((category) => (
+            <label key={category.id} className="flex flex-col gap-2">
+              <span className={labelClass}>{category.name}</span>
               <input
                 type="number"
                 min="0"
@@ -75,70 +91,90 @@ function PlanBlock({ title, pct, target, categories, amountFor, values, onChange
                 placeholder="0"
                 value={values[category.id] ?? ""}
                 onChange={(event) => onChange(category.id, event.target.value)}
+                className={inputClass}
               />
-            ) : (
-              formatDollars(amountFor(category.id))
-            )}
-          </label>
+            </label>
+          ))}
         </div>
-      ))}
+      ) : (
+        <ul className="mt-6 divide-y divide-slate-100">
+          {categories.map((category) => (
+            <li key={category.id} className="flex justify-between py-3">
+              <span className="text-slate-600">{category.name}</span>
+              <span className={`font-semibold ${NAVY}`}>{formatDollars(amountFor(category.id))}</span>
+            </li>
+          ))}
+        </ul>
+      )}
 
       {difference < 0 && (
-        <p style={{ color: WARNING_COLOR }}>
+        <p className={`mt-6 ${NOTE.warning}`}>
           You planned {formatDollars(-difference)} more for {title.toLowerCase()} than your {pct}%
           target.
         </p>
       )}
-    </fieldset>
+    </section>
   );
 }
 
-// The savings plan line, with a red / amber / green message
+// The savings card, with a red / amber / green message
 function SavingsPlan({ income, savingsPct, expectedSpending }) {
   const target = roundCents((income * savingsPct) / 100);
   const planned = roundCents(income - expectedSpending);
 
   return (
-    <>
-      <p>
-        Savings ({savingsPct}%): Target {formatDollars(target)} · Expected savings{" "}
-        {formatDollars(planned)}
-      </p>
+    <section className={cardClass}>
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 className={`text-xl ${NAVY}`}>Savings ({savingsPct}%)</h2>
+        <p className="text-sm text-slate-500">
+          Target {formatDollars(target)} · Expected savings {formatDollars(planned)}
+        </p>
+      </div>
       {planned < 0 && (
-        <p style={{ color: DANGER_COLOR }}>
+        <p className={`mt-4 ${NOTE.danger}`}>
           Your plan allocates {formatDollars(-planned)} more than your income.
         </p>
       )}
       {planned >= 0 && planned < target && (
-        <p style={{ color: WARNING_COLOR }}>
+        <p className={`mt-4 ${NOTE.warning}`}>
           Your plan saves {formatDollars(planned)}, {formatDollars(target - planned)} less than your{" "}
           {formatDollars(target)} savings target.
         </p>
       )}
       {planned >= target && (
-        <p style={{ color: SUCCESS_COLOR }}>
+        <p className={`mt-4 ${NOTE.success}`}>
           {planned === target
             ? "Your plan meets your savings target exactly."
             : `Your plan saves ${formatDollars(planned - target)} more than your ${formatDollars(target)} savings target.`}
         </p>
       )}
-    </>
+    </section>
   );
 }
 
 function TotalRow({ label, totals }) {
   return (
-    <tr>
-      <td>
-        <strong>{label}</strong>
-      </td>
-      <td>
-        <strong>{formatDollars(totals.spent)}</strong>
-      </td>
-      <td style={totals.left < 0 ? { color: DANGER_COLOR } : undefined}>
-        <strong>{formatDollars(totals.left)}</strong>
+    <tr className={`border-t border-slate-200 font-semibold ${NAVY}`}>
+      <td className="py-3">{label}</td>
+      <td className="py-3 text-right">{formatDollars(totals.spent)}</td>
+      <td className={`py-3 text-right ${totals.left < 0 ? "text-red-600" : ""}`}>
+        {formatDollars(totals.left)}
       </td>
     </tr>
+  );
+}
+
+// One box in the Summary card
+function Stat({ label, value, valueClass = NAVY, note, children }) {
+  return (
+    <div className="rounded-2xl bg-slate-50 p-5">
+      <p className="text-sm text-slate-500">{label}</p>
+      <p className="mt-1 flex items-center gap-2">
+        <span className={`text-2xl font-semibold tracking-tight ${valueClass}`}>{value}</span>
+        {children}
+      </p>
+      {note && <p className="mt-1 text-sm text-slate-500">{note}</p>}
+    </div>
   );
 }
 
@@ -264,7 +300,11 @@ function BudgetPage() {
   }
 
   if (loading) {
-    return <p>Loading...</p>;
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 text-slate-500">
+        Loading...
+      </div>
+    );
   }
 
   // ---------- Saved view: plan + this month so far ----------
@@ -295,93 +335,114 @@ function BudgetPage() {
     const explanation = reasons.length > 1 ? reasons.join(" · ") : null;
 
     return (
-      <div>
-        <h1>Budget</h1>
-        <p>
-          {monthLabel(budget.month)} Expected Budget Allowance: {formatDollars(income)}
-        </p>
-        <p>
-          Plan: {savedPlan ? savedPlan.name : "Custom"} ({budget.needs_pct} / {budget.wants_pct} /{" "}
-          {budget.savings_pct})
-        </p>
+      <div className="min-h-screen bg-slate-50">
+        <main className="mx-auto max-w-4xl px-6 py-12">
+          <h1 className={`text-5xl font-medium tracking-tight ${NAVY}`}>Budget</h1>
 
-        <PlanBlock
-          title="Needs"
-          pct={budget.needs_pct}
-          target={roundCents((income * budget.needs_pct) / 100)}
-          categories={categories.filter((category) => category.kind === "need")}
-          amountFor={(categoryId) => savedAmounts.get(categoryId) ?? 0}
-        />
-        <PlanBlock
-          title="Wants"
-          pct={budget.wants_pct}
-          target={roundCents((income * budget.wants_pct) / 100)}
-          categories={categories.filter((category) => category.kind === "want")}
-          amountFor={(categoryId) => savedAmounts.get(categoryId) ?? 0}
-        />
-        <SavingsPlan
-          income={income}
-          savingsPct={budget.savings_pct}
-          expectedSpending={summary.plannedSpending}
-        />
+          <div className="mt-6 flex flex-wrap gap-3">
+            <span className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600">
+              {monthLabel(budget.month)} Expected Budget Allowance:{" "}
+              <span className={`font-semibold ${NAVY}`}>{formatDollars(income)}</span>
+            </span>
+            <span className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600">
+              Plan:{" "}
+              <span className={`font-semibold ${NAVY}`}>
+                {savedPlan ? savedPlan.name : "Custom"} ({budget.needs_pct} / {budget.wants_pct} /{" "}
+                {budget.savings_pct})
+              </span>
+            </span>
+          </div>
 
-        <h2>Actual Spending:</h2>
-        <table style={{ margin: "0 auto" }}>
-          <thead>
-            <tr>
-              <th>Category</th>
-              <th>Spent</th>
-              <th>Left</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={row.id}>
-                <td>{row.name}</td>
-                <td>{formatDollars(row.spent)}</td>
-                <td style={row.left < 0 ? { color: DANGER_COLOR } : undefined}>
-                  {formatDollars(row.left)}
-                </td>
-              </tr>
-            ))}
-            <TotalRow label="Needs total" totals={needs} />
-            <TotalRow label="Wants total" totals={wants} />
-          </tbody>
-        </table>
-        
-        <h2>Summary:</h2>
-        <p>
-          Income received: {formatDollars(summary.received)} of {formatDollars(income)} expected
-        </p>
-        <p>
-          Spent so far: {formatDollars(summary.spent)} of {formatDollars(summary.plannedSpending)}{" "}
-          expected
-        </p>
-        <p>
-          Projected savings:{" "}
-          <span style={summary.projectedSavings < 0 ? { color: DANGER_COLOR } : undefined}>
-            {formatDollars(summary.projectedSavings)}
-          </span>
-          {explanation && (
-            <span title={explanation} style={{ cursor: "help" }}>
-              {" "}
-              ⓘ
-            </span>
-          )}
-        </p>
-        {summary.missingIncome > 0 && (
-          <p style={{ color: WARNING_COLOR }}>
-            Still expecting {formatDollars(summary.missingIncome)} of income. If it doesn't arrive:{" "}
-            <span style={summary.worstCaseSavings < 0 ? { color: DANGER_COLOR } : undefined}>
-              {formatDollars(summary.worstCaseSavings)}
-            </span>
+          <div className="mt-8 flex flex-col gap-6">
+            <PlanBlock
+              title="Needs"
+              pct={budget.needs_pct}
+              target={roundCents((income * budget.needs_pct) / 100)}
+              categories={categories.filter((category) => category.kind === "need")}
+              amountFor={(categoryId) => savedAmounts.get(categoryId) ?? 0}
+            />
+            <PlanBlock
+              title="Wants"
+              pct={budget.wants_pct}
+              target={roundCents((income * budget.wants_pct) / 100)}
+              categories={categories.filter((category) => category.kind === "want")}
+              amountFor={(categoryId) => savedAmounts.get(categoryId) ?? 0}
+            />
+            <SavingsPlan
+              income={income}
+              savingsPct={budget.savings_pct}
+              expectedSpending={summary.plannedSpending}
+            />
+
+            <section className={cardClass}>
+              <h2 className={`text-xl ${NAVY}`}>Actual Spending</h2>
+              <table className="mt-4 w-full text-sm">
+                <thead>
+                  <tr className="text-left text-slate-500">
+                    <th className="py-2 font-medium">Category</th>
+                    <th className="py-2 text-right font-medium">Spent</th>
+                    <th className="py-2 text-right font-medium">Left</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((row) => (
+                    <tr key={row.id} className="border-t border-slate-100">
+                      <td className="py-3 text-slate-700">{row.name}</td>
+                      <td className={`py-3 text-right ${NAVY}`}>{formatDollars(row.spent)}</td>
+                      <td className={`py-3 text-right ${row.left < 0 ? "font-semibold text-red-600" : NAVY}`}>
+                        {formatDollars(row.left)}
+                      </td>
+                    </tr>
+                  ))}
+                  <TotalRow label="Needs total" totals={needs} />
+                  <TotalRow label="Wants total" totals={wants} />
+                </tbody>
+              </table>
+            </section>
+
+            <section className={cardClass}>
+              <h2 className={`text-xl ${NAVY}`}>Summary</h2>
+              <div className="mt-6 grid gap-4 sm:grid-cols-3">
+                <Stat
+                  label="Income received"
+                  value={formatDollars(summary.received)}
+                  note={`of ${formatDollars(income)} expected`}
+                />
+                <Stat
+                  label="Spent so far"
+                  value={formatDollars(summary.spent)}
+                  note={`of ${formatDollars(summary.plannedSpending)} expected`}
+                />
+                <Stat
+                  label="Projected savings"
+                  value={formatDollars(summary.projectedSavings)}
+                  valueClass={summary.projectedSavings < 0 ? "text-red-600" : NAVY}
+                >
+                  {explanation && (
+                    <span title={explanation} className="cursor-help text-slate-400">
+                      ⓘ
+                    </span>
+                  )}
+                </Stat>
+              </div>
+              {summary.missingIncome > 0 && (
+                <p className={`mt-4 ${NOTE.warning}`}>
+                  Still expecting {formatDollars(summary.missingIncome)} of income. If it doesn't arrive:{" "}
+                  <span className={summary.worstCaseSavings < 0 ? "font-semibold text-red-600" : "font-semibold"}>
+                    {formatDollars(summary.worstCaseSavings)}
+                  </span>
+                </p>
+              )}
+            </section>
+          </div>
+
+          {message && <p className="mt-6 text-sm text-slate-700">{message}</p>}
+          <p className="mt-8">
+            <Link to="/dashboard" className={linkClass}>
+              Back to dashboard
+            </Link>
           </p>
-        )}
-
-        {message && <p>{message}</p>}
-      <p>
-        <Link to="/dashboard">Back to dashboard</Link>
-      </p>
+        </main>
       </div>
     );
   }
@@ -394,79 +455,112 @@ function BudgetPage() {
   );
 
   return (
-    <div>
-      <h1>Create your budget for {monthLabel(month)}</h1>
+    <div className="min-h-screen bg-slate-50">
+      <main className="mx-auto max-w-4xl px-6 py-12">
+        <h1 className={`text-5xl font-medium tracking-tight ${NAVY}`}>
+          Create your budget for {monthLabel(month)}
+        </h1>
 
-      <form onSubmit={handleSubmit}>
-        <label>
-          Expected budget for {monthLabel(month)} ($){" "}
-          <input
-            type="number"
-            name="expectedAmount"
-            min="1"
-            max="1000000000"
-            step="1"
-            value={form.expectedAmount}
-            onChange={handleChange}
-            required
-          />
-        </label>
-
-        <fieldset>
-          <legend>Choose your budgeting model</legend>
-          {PLANS.map((plan) => (
-            <label key={plan.id}>
+        <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-6">
+          <section className={cardClass}>
+            <label className="flex flex-col gap-2">
+              <span className={labelClass}>Expected budget for {monthLabel(month)} ($)</span>
               <input
-                type="radio"
-                name="plan"
-                value={plan.id}
-                checked={form.plan === plan.id}
+                type="number"
+                name="expectedAmount"
+                min="1"
+                max="1000000000"
+                step="1"
+                value={form.expectedAmount}
                 onChange={handleChange}
+                required
+                className={inputClass}
               />
-              {plan.name} ({plan.needs} / {plan.wants} / {plan.savings})
             </label>
-          ))}
-        </fieldset>
 
-        {isValidAmount ? (
-          <>
-            <PlanBlock
-              title="Needs"
-              pct={selectedPlan.needs}
-              target={roundCents((amount * selectedPlan.needs) / 100)}
-              categories={needsCategories}
-              amountFor={(categoryId) => toAmount(allocations[categoryId])}
-              values={allocations}
-              onChange={handleAllocationChange}
-            />
-            <PlanBlock
-              title="Wants"
-              pct={selectedPlan.wants}
-              target={roundCents((amount * selectedPlan.wants) / 100)}
-              categories={wantsCategories}
-              amountFor={(categoryId) => toAmount(allocations[categoryId])}
-              values={allocations}
-              onChange={handleAllocationChange}
-            />
-            <SavingsPlan
-              income={amount}
-              savingsPct={selectedPlan.savings}
-              expectedSpending={formExpectedSpending}
-            />
-          </>
-        ) : (
-          <p>Enter your expected budget to plan your spending.</p>
-        )}
+            <fieldset className="mt-8">
+              <legend className={labelClass}>Choose your budgeting model</legend>
+              <div className="mt-3 grid gap-4 sm:grid-cols-3">
+                {PLANS.map((plan) => {
+                  const selected = form.plan === plan.id;
+                  return (
+                    <label
+                      key={plan.id}
+                      className={`cursor-pointer rounded-2xl border p-5 transition ${
+                        selected
+                          ? "border-[#3563e3] bg-blue-50 ring-2 ring-blue-100"
+                          : "border-slate-200 bg-white hover:border-slate-300"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className={`font-semibold ${selected ? "text-[#3563e3]" : NAVY}`}>
+                          {plan.name}
+                        </span>
+                        <input
+                          type="radio"
+                          name="plan"
+                          value={plan.id}
+                          checked={selected}
+                          onChange={handleChange}
+                          className="h-4 w-4 accent-[#3563e3]"
+                        />
+                      </div>
+                      <p className={`mt-3 text-2xl font-semibold tracking-tight ${NAVY}`}>
+                        {plan.needs} / {plan.wants} / {plan.savings}
+                      </p>
+                    </label>
+                  );
+                })}
+              </div>
+            </fieldset>
+          </section>
 
-        <button type="submit" disabled={saving}>
-          {saving ? "Saving..." : "Save my budget"}
-        </button>
-      </form>
+          {isValidAmount ? (
+            <>
+              <PlanBlock
+                title="Needs"
+                pct={selectedPlan.needs}
+                target={roundCents((amount * selectedPlan.needs) / 100)}
+                categories={needsCategories}
+                amountFor={(categoryId) => toAmount(allocations[categoryId])}
+                values={allocations}
+                onChange={handleAllocationChange}
+              />
+              <PlanBlock
+                title="Wants"
+                pct={selectedPlan.wants}
+                target={roundCents((amount * selectedPlan.wants) / 100)}
+                categories={wantsCategories}
+                amountFor={(categoryId) => toAmount(allocations[categoryId])}
+                values={allocations}
+                onChange={handleAllocationChange}
+              />
+              <SavingsPlan
+                income={amount}
+                savingsPct={selectedPlan.savings}
+                expectedSpending={formExpectedSpending}
+              />
+            </>
+          ) : (
+            <p className="text-slate-500">Enter your expected budget to plan your spending.</p>
+          )}
 
-      {message && <p>{message}</p>}
-      <p>
-        <Link to="/dashboard">Back to dashboard</Link>
-      </p>
+          <button
+            type="submit"
+            disabled={saving}
+            className="w-full rounded-xl bg-[#3563e3] py-3.5 font-semibold text-white shadow-lg shadow-blue-500/30 transition hover:bg-[#2b54cc] disabled:opacity-60"
+          >
+            {saving ? "Saving..." : "Save my budget"}
+          </button>
+        </form>
+
+        {message && <p className="mt-6 text-sm text-slate-700">{message}</p>}
+        <p className="mt-8">
+          <Link to="/dashboard" className={linkClass}>
+            Back to dashboard
+          </Link>
+        </p>
+      </main>
     </div>
   );
 }
