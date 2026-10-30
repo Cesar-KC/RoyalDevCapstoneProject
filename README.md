@@ -6,7 +6,7 @@ A full-stack personal budgeting application built as a senior capstone project a
 
 ## Features
 
-- **Accounts and sessions:** register, log in, and log out. Sessions use a secure cookie and expire after 1 day.
+- **Accounts and sessions:** register, log in, and log out. Sessions use a secure cookie and expire after 12 hours (NIST 800-63B AAL2).
 - **Monthly budget:** set an expected budget for the month, choose a plan (Balanced 50/30/20, Save more 40/20/40, Essentials 60/20/20), and split needs and wants across categories. Warnings show when the plan goes over a target, but never block saving.
 - **Transactions:** record income and expenses with amount, category, date, and optional notes, and browse them by month.
 - **Plan vs. actual:** the budget page shows spending per category, income received, and projected savings for the month.
@@ -135,14 +135,14 @@ All endpoints except register and login require a valid session cookie; otherwis
 ## Roadmap
 
 - [x] User registration and login
-- [x] Sessions (secure cookie, 1-day expiry, logout)
+- [x] Sessions (secure cookie, 12 hour-expiry (NIST 800-63B AAL2), logout)
 - [x] Monthly budget creation with plans and category allocations
 - [x] Income and expense transactions
 - [x] Plan vs. actual on the budget page and dashboard
 - [x] Styling with Tailwind (matching the Figma designs)
 - [ ] AI budgeting assistant
 - [ ] Data visualization (charts)
-- [ ] Session persistence ("Remember me")
+- [ ] Session inactivity timeout (30 minutes of inactivity logs the user out)
 - [ ] Profile and settings
 - [ ] Notifications
 - [ ] Deployment
