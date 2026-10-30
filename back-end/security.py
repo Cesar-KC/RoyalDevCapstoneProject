@@ -2,7 +2,7 @@ from secrets import token_urlsafe
 from hashlib import sha256
 from datetime import datetime, timedelta, timezone
 
-SESSION_LIFETIME = timedelta(days=.5) #define session to one day
+SESSION_LIFETIME = timedelta(hours=12) #define session to one day
 
 
 
