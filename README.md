@@ -177,4 +177,4 @@ Pushing to `main` updates the live demo right away, so test changes on a branch 
 - [ ] Notifications
 - [ ] Automatic Testing
 - [x] Deployment (demo: Vercel frontend + ngrok tunnel to the backend)
-- [ ] Full hosting (backend and database in the cloud)
+
