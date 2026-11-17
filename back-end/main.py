@@ -11,11 +11,17 @@ from sqlalchemy.orm import Session
 from database import SessionLocal
 from models import User, UserSession, UserBudget, Category, BudgetAllocation, Transaction
 from schemas import UserCreate, UserOut, UserLogin, BudgetCreate, BudgetOut, CategoryOut, TransactionCreate, TransactionOut, MONTH_PATTERN
-from security import new_session_token, hash_token, session_expiry, SESSION_LIFETIME, utc_now
+from security import new_session_token, hash_token, session_expiry, SESSION_LIFETIME, utc_now, IS_PRODUCTION, COOKIE_SECURE
 
 
 
-app = FastAPI(title="Budget App API")
+# IF ran in production, hide the interactive docs 
+app = FastAPI(
+    title="Budget App API",
+    docs_url=None if IS_PRODUCTION else "/docs",
+    redoc_url=None if IS_PRODUCTION else "/redoc",
+    openapi_url=None if IS_PRODUCTION else "/openapi.json",
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -131,7 +137,7 @@ def login(user_in: UserLogin, response: Response, db: Session = Depends(get_db))
         max_age=int(SESSION_LIFETIME.total_seconds()),
         httponly=True,
         samesite="lax",
-        secure=False,  # True in production (HTTPS only)
+        secure=COOKIE_SECURE,  # True when APP_ENV=production (HTTPS only)
     )
     return user
 
@@ -159,7 +165,7 @@ def logout(
         key="session_token",
         httponly=True,
         samesite="lax",
-        secure=False,  # True in production (HTTPS only)
+        secure=COOKIE_SECURE,  # True when APP_ENV=production (HTTPS only)
     )
 
 
