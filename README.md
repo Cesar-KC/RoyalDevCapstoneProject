@@ -4,6 +4,8 @@ A full-stack personal budgeting application built as a senior capstone project a
 
 **Current status (midterm):** users can register, log in, create a monthly budget with a plan and category allocations, record income and expenses, and compare their plan with actual spending on the budget page and dashboard.
 
+**Live demo:** https://royal-budget.vercel.app. It only works while the backend and ngrok are running on the host laptop (see [Running the Live Demo](#running-the-live-demo)). Use made-up information only.
+
 ## Features
 
 - **Accounts and sessions:** register, log in, and log out. Sessions use a secure cookie and expire after 12 hours (NIST 800-63B AAL2).
@@ -33,11 +35,12 @@ RoyalDevCapstoneProject/
 │   ├── schemas.py         Pydantic schemas (API request/response shapes and validation)
 │   ├── security.py        Session token creation, hashing, and expiry
 │   ├── requirements.txt
-│   └── .env.example       Template for local database settings
+│   └── .env.example       Template for local settings (APP_ENV and database)
 ├── front-end/             React application (Vite)
 │   ├── vite.config.js     Tailwind plugin and the /api proxy to the backend
+│   ├── vercel.json        Live demo: forwards /api to the ngrok tunnel, everything else to the app
 │   └── src/
-│       ├── main.jsx            Entry point
+│       ├── main.jsx            Entry point (adds the ngrok header to /api calls)
 │       ├── App.jsx             Routes
 │       ├── index.css           Tailwind import
 │       ├── LoginPage.jsx
@@ -76,7 +79,7 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
-Edit `.env` and set `DB_PASSWORD` to the password from step 1. Never commit `.env`.
+Edit `.env` and set `DB_PASSWORD` to the password from step 1. Leave `APP_ENV=development` for local work. Never commit `.env`.
 
 ### 3. Frontend
 
@@ -99,6 +102,31 @@ Use two terminals:
 Open the app at **http://localhost:5173**. The Vite dev server forwards every `/api` request to the backend, so the browser sees one address and the session cookie works.
 
 Interactive API docs (Swagger) are available at http://127.0.0.1:8000/docs. To call protected endpoints there, run `POST /api/login` on that page first.
+
+## Running the Live Demo
+
+The live demo uses a thin deployment: the React app is hosted on Vercel, and the backend and database stay on the host laptop, reached through an ngrok tunnel.
+
+```
+Browser → royal-budget.vercel.app (Vercel) → /api/* → ngrok tunnel → FastAPI on 127.0.0.1:8000 → MySQL
+```
+
+Because Vercel forwards `/api` on the same address as the app, the browser sees one site, so the session cookie works and no CORS setup is needed.
+
+On the host laptop, use two terminals:
+
+| Terminal | Commands |
+|----------|----------|
+| Backend  | `cd back-end` → `source .venv/bin/activate` → `APP_ENV=production fastapi run main.py --host 127.0.0.1 --port 8000` |
+| Tunnel   | `ngrok http http://localhost:8000 --url https://swapping-election-espresso.ngrok-free.dev` |
+
+- **Production mode** (`APP_ENV=production`) marks the session cookie as Secure (HTTPS only) and turns off `/docs`, `/redoc`, and `/openapi.json`.
+- **`--host 127.0.0.1`** keeps FastAPI reachable only from the laptop itself; all outside traffic must come through ngrok. MySQL is never exposed.
+- **Frontend updates:** every push to `main` rebuilds and redeploys the site on Vercel automatically.
+- **Requests:** the ngrok inspector at http://127.0.0.1:4040 shows requests as they arrive, including request bodies such as passwords. Don't share screenshots of it.
+- **Secrets:** the ngrok authtoken stays in ngrok's own config on the host laptop. Never put it in the repo.
+
+If the backend moves off ngrok, update the address in `front-end/vercel.json` and remove the ngrok header block in `front-end/src/main.jsx`.
 
 ## API Endpoints
 
@@ -127,6 +155,8 @@ All endpoints except register and login require a valid session cookie; otherwis
 
 ## Git Workflow
 
+Pushing to `main` updates the live demo right away, so test changes on a branch first. Vercel also builds a separate preview link for each pushed branch.
+
 1. Start from an up-to-date `main`: `git switch main` → `git pull`
 2. Create a branch per feature: `git switch -c feature/<name>`
 3. Commit and push your work to the branch
@@ -146,4 +176,5 @@ All endpoints except register and login require a valid session cookie; otherwis
 - [ ] Profile and settings
 - [ ] Notifications
 - [ ] Automatic Testing
-- [ ] Deployment
+- [x] Deployment (demo: Vercel frontend + ngrok tunnel to the backend)
+- [ ] Full hosting (backend and database in the cloud)
