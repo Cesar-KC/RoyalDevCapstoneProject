@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 
 const inputClass =
   "w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100";
 const labelClass = "text-sm font-semibold text-slate-700";
 
 function RegisterPage() {
+  const navigate = useNavigate();
   const [form, setForm] = useState({
     username: "",
     name: "",
@@ -44,7 +45,10 @@ function RegisterPage() {
       const data = await response.json();
 
       if (response.status === 201) {
-        setMessage(`Account created! Welcome, ${data.name}.`);
+        // Redirect to login; LoginPage reads this from location.state
+        navigate("/login", {
+          state: { message: `Account created! Welcome, ${data.name}. Please log in.` },
+        });
       } else if (response.status === 409) {
         setMessage(data.detail);
       } else if (response.status === 422) {
@@ -62,8 +66,7 @@ function RegisterPage() {
     }
   }
 
-
-    return (
+  return (
     <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
       <div className="w-full max-w-xl rounded-3xl border border-slate-200 bg-white p-10 shadow-xl shadow-slate-200/60">
         <h1 className="text-4xl font-medium tracking-tight text-[#1b2559]">Register</h1>
@@ -102,7 +105,7 @@ function RegisterPage() {
           </button>
         </form>
 
-        {message && <p className="mt-4 text-sm text-slate-700">{message}</p>}
+        {message && <p className="mt-4 text-sm text-red-600">{message}</p>}
 
         <p className="mt-6 text-center text-sm text-slate-500">
           Already have an account?{" "}
@@ -113,7 +116,6 @@ function RegisterPage() {
       </div>
     </div>
   );
-  
 }
 
 export default RegisterPage;

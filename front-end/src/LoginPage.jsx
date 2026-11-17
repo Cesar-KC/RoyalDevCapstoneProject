@@ -1,8 +1,12 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link, useNavigate, useLocation } from "react-router";
 
 function LoginPage() {
-  const navigate = useNavigate(); 
+  const navigate = useNavigate();
+  const location = useLocation();
+  // Set by the register page: navigate("/login", { state: { message: "..." } })
+  const successMessage = location.state?.message;
+
   const [form, setForm] = useState({
     username: "",
     password: "",
@@ -47,6 +51,15 @@ function LoginPage() {
       <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-10 shadow-xl shadow-slate-200/60">
         <h1 className="text-4xl font-medium tracking-tight text-[#1b2559]">Budget App</h1>
 
+        {successMessage && !message && (
+          <p
+            role="status"
+            className="mt-6 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-medium text-green-700"
+          >
+            {successMessage}
+          </p>
+        )}
+
         <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-6">
           <div className="flex flex-col gap-2">
             <label className="text-sm font-semibold text-slate-700">Username</label>
@@ -90,7 +103,6 @@ function LoginPage() {
       </div>
     </div>
   );
-
 }
 
 export default LoginPage;
