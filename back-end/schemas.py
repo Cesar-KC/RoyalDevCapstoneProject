@@ -28,6 +28,11 @@ class UserLogin(BaseModel):
     password: str = Field(min_length=1, max_length=72)
 
 
+class PasswordChange(BaseModel):
+    current_password: str = Field(min_length=1, max_length=72)
+    new_password: str = Field(min_length=8, max_length=72)  # same rules as UserCreate.password
+
+
 class AllocationIn(BaseModel):
     category_id: int
     amount: int = Field(ge=0, le=1_000_000_000)

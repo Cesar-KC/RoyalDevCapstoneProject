@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { useNavigate } from "react-router";
+import Navbar from "./Navbar";
 
 const AMOUNT_PATTERN = /^\d+(\.\d{1,2})?$/; // e.g. 12, 12.5, 12.49
 
@@ -9,7 +10,6 @@ const cardClass = "rounded-3xl border border-slate-200 bg-white p-8 shadow-xl sh
 const inputClass =
   "w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100";
 const labelClass = "text-sm font-semibold text-slate-700";
-const linkClass = "text-sm font-semibold text-[#3563e3] hover:underline";
 const arrowButtonClass =
   "flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:text-slate-900";
 
@@ -367,6 +367,8 @@ function TransactionsPage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
+      <Navbar />
+      
       <main className="mx-auto max-w-6xl px-6 py-12">
         <h1 className={`text-5xl font-medium tracking-tight ${NAVY}`}>Transactions</h1>
 
@@ -410,12 +412,6 @@ function TransactionsPage() {
             categoryNames={categoryNames}
           />
         </div>
-
-        <p className="mt-8">
-          <Link to="/dashboard" className={linkClass}>
-            Back to dashboard
-          </Link>
-        </p>
       </main>
     </div>
   );

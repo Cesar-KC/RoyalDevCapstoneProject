@@ -4,13 +4,13 @@ from datetime import date
 from fastapi import Depends, FastAPI, HTTPException, status, Response, Cookie, Query
 from fastapi.middleware.cors import CORSMiddleware
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from database import SessionLocal
 from models import User, UserSession, UserBudget, Category, BudgetAllocation, Transaction
-from schemas import UserCreate, UserOut, UserLogin, BudgetCreate, BudgetOut, CategoryOut, TransactionCreate, TransactionOut, MONTH_PATTERN
+from schemas import UserCreate, UserOut, UserLogin, PasswordChange, BudgetCreate, BudgetOut, CategoryOut, TransactionCreate, TransactionOut, MONTH_PATTERN
 from security import new_session_token, hash_token, session_expiry, SESSION_LIFETIME, utc_now, IS_PRODUCTION, COOKIE_SECURE
 
 
@@ -145,6 +145,42 @@ def login(user_in: UserLogin, response: Response, db: Session = Depends(get_db))
 @app.get("/api/me", response_model=UserOut)
 def me(current_user: User = Depends(get_current_user)):
     return current_user
+
+
+@app.post("/api/me/password", status_code=status.HTTP_204_NO_CONTENT)
+def change_password(
+    password_in: PasswordChange,
+    session_token: str | None = Cookie(default=None),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    # 400, not 401: a wrong current password must not look like an expired session
+    if not bcrypt.checkpw(
+        password_in.current_password.encode("utf-8"),
+        current_user.password_hash.encode("utf-8"),
+    ):
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
+
+    new_bytes = password_in.new_password.encode("utf-8")
+    if len(new_bytes) > 72:
+        raise HTTPException(status_code=422, detail="Password is too long")
+    if bcrypt.checkpw(new_bytes, current_user.password_hash.encode("utf-8")):
+        raise HTTPException(status_code=400, detail="New password must be different from the current one")
+
+    current_user.password_hash = bcrypt.hashpw(new_bytes, bcrypt.gensalt()).decode("utf-8")
+    current_user.updated_at = utc_now()
+
+    # Log out every other session; this browser stays logged in
+    db.execute(
+        update(UserSession)
+        .where(
+            UserSession.user_id == current_user.id,
+            UserSession.token_hash != hash_token(session_token),
+            UserSession.is_revoked.is_(False),
+        )
+        .values(is_revoked=True)
+    )
+    db.commit()
 
 
 @app.post("/api/logout", status_code=status.HTTP_204_NO_CONTENT)

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { Link, NavLink, useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { buildCategoryRows, groupTotals, monthSummary } from "./budgetMath";
+import Navbar from "./Navbar";
 
 // Shared looks (same values as the login and register pages)
 const NAVY = "text-[#1b2559]";
@@ -11,9 +12,9 @@ const buttonLinkClass =
 
 // Colors for the small square next to each recent transaction, by category kind
 const KIND_BADGE = {
-  need: "bg-blue-50 text-blue-700",
-  want: "bg-amber-50 text-amber-700",
-  income: "bg-emerald-50 text-emerald-700",
+  need: "bg-blue-100 text-blue-700",
+  want: "bg-amber-100 text-amber-700",
+  income: "bg-emerald-100 text-emerald-700",
 };
 
 // The user's local month, e.g. "2026-10"
@@ -43,38 +44,6 @@ function shortDate(isoDate) {
 
 function formatDollars(amount) {
   return amount.toLocaleString("en-US", { style: "currency", currency: "USD" });
-}
-
-// Top bar: app name on the left, pill navigation on the right
-function Navbar({ onLogout }) {
-  // NavLink tells us if its link is the current page, so the active pill can be highlighted
-  const pillClass = ({ isActive }) =>
-    `rounded-full px-4 py-2 text-sm font-medium transition ${
-      isActive ? "bg-blue-50 text-[#3563e3]" : "text-slate-600 hover:text-slate-900"
-    }`;
-
-  return (
-    <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-6">
-      <span className={`text-lg font-semibold uppercase tracking-[0.25em] ${NAVY}`}>Budget App</span>
-      <nav className="flex items-center gap-1 rounded-full border border-slate-200 bg-white p-1 shadow-sm">
-        <NavLink to="/dashboard" className={pillClass}>
-          Home
-        </NavLink>
-        <NavLink to="/budget" className={pillClass}>
-          Budget
-        </NavLink>
-        <NavLink to="/transactions" className={pillClass}>
-          Transactions
-        </NavLink>
-        <button
-          onClick={onLogout}
-          className="rounded-full px-4 py-2 text-sm font-medium text-slate-600 transition hover:text-slate-900"
-        >
-          Log out
-        </button>
-      </nav>
-    </header>
-  );
 }
 
 // One "Needs" / "Wants" row: dot, amounts, percent, and a progress bar
@@ -326,14 +295,6 @@ function DashboardPage() {
     loadDashboard();
   }, [month, navigate]);
 
-  async function handleLogout() {
-    try {
-      await fetch("/api/logout", { method: "POST" });
-    } finally {
-      navigate("/login", { replace: true });
-    }
-  }
-
   if (user === null) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50 text-slate-500">
@@ -347,7 +308,7 @@ function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <Navbar onLogout={handleLogout} />
+      <Navbar />
 
       <main className="mx-auto max-w-6xl px-6 pb-16">
         <h1 className={`mt-8 text-5xl font-medium tracking-tight ${NAVY}`}>Welcome, {user.name}</h1>

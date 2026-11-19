@@ -4,6 +4,7 @@ import RegisterPage from "./RegisterPage";
 import DashboardPage from "./DashboardPage";
 import BudgetPage from "./BudgetPage";
 import TransactionsPage from "./TransactionsPage";
+import ProfilePage from "./ProfilePage";
 
 
 function App() {
@@ -15,6 +16,7 @@ function App() {
       <Route path="/dashboard" element={<DashboardPage />} />
       <Route path="/budget" element={<BudgetPage />} />
       <Route path="/transactions" element={<TransactionsPage />} />
+      <Route path="/profile" element={<ProfilePage />} />
       <Route path="*" element={<h1>Page not found</h1>} />
     </Routes>
   );

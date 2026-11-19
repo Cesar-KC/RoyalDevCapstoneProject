@@ -49,7 +49,7 @@ function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
       <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-10 shadow-xl shadow-slate-200/60">
-        <h1 className="text-4xl font-medium tracking-tight text-[#1b2559]">Budget App</h1>
+        <h1 className="text-4xl font-medium tracking-tight text-[#1b2559]">Royal Budget</h1>
 
         {successMessage && !message && (
           <p

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { buildCategoryRows, groupTotals, monthSummary, roundCents } from "./budgetMath";
+import Navbar from "./Navbar";
 
 // Display copy of the plans, for the live preview only.
 // The server keeps its own table and decides the real percentages.
@@ -73,10 +74,7 @@ function PlanBlock({ title, pct, target, categories, amountFor, values, onChange
         <h2 className={`text-xl ${NAVY}`}>
           {title} ({pct}%)
         </h2>
-        <p className="text-sm text-slate-500">
-          Target {formatDollars(target)} · Expected spending {formatDollars(expected)} ·{" "}
-          <span className={difference < 0 ? "font-semibold text-amber-700" : ""}>{status}</span>
-        </p>
+        <p className="text-sm text-slate-500">Target {formatDollars(target)}</p>
       </div>
 
       {onChange ? (
@@ -107,6 +105,15 @@ function PlanBlock({ title, pct, target, categories, amountFor, values, onChange
         </ul>
       )}
 
+      <div className="mt-4 flex flex-wrap items-baseline justify-between gap-2 border-t border-slate-200 pt-4">
+        <span className={`font-semibold ${NAVY}`}>Expected spending</span>
+        <span className="text-sm text-slate-500">
+          <span className={`font-semibold ${NAVY}`}>{formatDollars(expected)}</span>
+          {/* Over target is already explained by the warning below */}
+          {difference >= 0 && ` · ${status}`}
+        </span>
+      </div>
+
       {difference < 0 && (
         <p className={`mt-6 ${NOTE.warning}`}>
           You planned {formatDollars(-difference)} more for {title.toLowerCase()} than your {pct}%
@@ -126,9 +133,7 @@ function SavingsPlan({ income, savingsPct, expectedSpending }) {
     <section className={cardClass}>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 className={`text-xl ${NAVY}`}>Savings ({savingsPct}%)</h2>
-        <p className="text-sm text-slate-500">
-          Target {formatDollars(target)} · Expected savings {formatDollars(planned)}
-        </p>
+        <p className="text-sm text-slate-500">Target {formatDollars(target)}</p>
       </div>
       {planned < 0 && (
         <p className={`mt-4 ${NOTE.danger}`}>
@@ -175,6 +180,28 @@ function Stat({ label, value, valueClass = NAVY, note, children }) {
       </p>
       {note && <p className="mt-1 text-sm text-slate-500">{note}</p>}
     </div>
+  );
+}
+
+// A card whose body is hidden until "Show details" is clicked, to keep the page short
+function CollapsibleCard({ title, children }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <section className={cardClass}>
+      <div className="flex items-center justify-between gap-2">
+        <h2 className={`text-xl ${NAVY}`}>{title}</h2>
+        <button
+          type="button"
+          onClick={() => setOpen(!open)}
+          aria-expanded={open}
+          className={linkClass}
+        >
+          {open ? "Hide details" : "Show details"}
+        </button>
+      </div>
+      {open && children}
+    </section>
   );
 }
 
@@ -336,15 +363,16 @@ function BudgetPage() {
 
     return (
       <div className="min-h-screen bg-slate-50">
-        <main className="mx-auto max-w-4xl px-6 py-12">
-          <h1 className={`text-5xl font-medium tracking-tight ${NAVY}`}>Budget</h1>
+        <Navbar />
 
+        <main className="mx-auto max-w-6xl px-6 pb-12 pt-8">
+          <h1 className={`text-5xl font-medium tracking-tight ${NAVY}`}>Budget Overview</h1>
           <div className="mt-6 flex flex-wrap gap-3">
-            <span className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600">
+            <span className="rounded-full border border-slate-200 bg-white px-4 py-2 text-lg text-slate-900">
               {monthLabel(budget.month)} Expected Budget Allowance:{" "}
               <span className={`font-semibold ${NAVY}`}>{formatDollars(income)}</span>
             </span>
-            <span className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600">
+            <span className="rounded-full border border-slate-200 bg-white px-4 py-2 text-lg text-slate-600">
               Plan:{" "}
               <span className={`font-semibold ${NAVY}`}>
                 {savedPlan ? savedPlan.name : "Custom"} ({budget.needs_pct} / {budget.wants_pct} /{" "}
@@ -354,28 +382,34 @@ function BudgetPage() {
           </div>
 
           <div className="mt-8 flex flex-col gap-6">
-            <PlanBlock
-              title="Needs"
-              pct={budget.needs_pct}
-              target={roundCents((income * budget.needs_pct) / 100)}
-              categories={categories.filter((category) => category.kind === "need")}
-              amountFor={(categoryId) => savedAmounts.get(categoryId) ?? 0}
-            />
-            <PlanBlock
-              title="Wants"
-              pct={budget.wants_pct}
-              target={roundCents((income * budget.wants_pct) / 100)}
-              categories={categories.filter((category) => category.kind === "want")}
-              amountFor={(categoryId) => savedAmounts.get(categoryId) ?? 0}
-            />
-            <SavingsPlan
-              income={income}
-              savingsPct={budget.savings_pct}
-              expectedSpending={summary.plannedSpending}
-            />
+            <CollapsibleCard title="Expected Allocations">
+              {/* Needs on the left, Wants and Savings stacked on the right (one column on small screens) */}
+              <div className="mt-6 grid gap-6 lg:grid-cols-2">
+                <PlanBlock
+                  title="Needs"
+                  pct={budget.needs_pct}
+                  target={roundCents((income * budget.needs_pct) / 100)}
+                  categories={categories.filter((category) => category.kind === "need")}
+                  amountFor={(categoryId) => savedAmounts.get(categoryId) ?? 0}
+                />
+                <div className="flex flex-col gap-6">
+                  <PlanBlock
+                    title="Wants"
+                    pct={budget.wants_pct}
+                    target={roundCents((income * budget.wants_pct) / 100)}
+                    categories={categories.filter((category) => category.kind === "want")}
+                    amountFor={(categoryId) => savedAmounts.get(categoryId) ?? 0}
+                  />
+                  <SavingsPlan
+                    income={income}
+                    savingsPct={budget.savings_pct}
+                    expectedSpending={summary.plannedSpending}
+                  />
+                </div>
+              </div>
+            </CollapsibleCard>
 
-            <section className={cardClass}>
-              <h2 className={`text-xl ${NAVY}`}>Actual Spending</h2>
+            <CollapsibleCard title="Actual Spending">
               <table className="mt-4 w-full text-sm">
                 <thead>
                   <tr className="text-left text-slate-500">
@@ -398,7 +432,7 @@ function BudgetPage() {
                   <TotalRow label="Wants total" totals={wants} />
                 </tbody>
               </table>
-            </section>
+            </CollapsibleCard>
 
             <section className={cardClass}>
               <h2 className={`text-xl ${NAVY}`}>Summary</h2>
@@ -437,11 +471,6 @@ function BudgetPage() {
           </div>
 
           {message && <p className="mt-6 text-sm text-slate-700">{message}</p>}
-          <p className="mt-8">
-            <Link to="/dashboard" className={linkClass}>
-              Back to dashboard
-            </Link>
-          </p>
         </main>
       </div>
     );
@@ -456,7 +485,9 @@ function BudgetPage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <main className="mx-auto max-w-4xl px-6 py-12">
+      <Navbar />
+
+      <main className="mx-auto max-w-6xl px-6 pb-12 pt-8">
         <h1 className={`text-5xl font-medium tracking-tight ${NAVY}`}>
           Create your budget for {monthLabel(month)}
         </h1>
@@ -516,7 +547,8 @@ function BudgetPage() {
           </section>
 
           {isValidAmount ? (
-            <>
+            // Needs on the left, Wants and Savings stacked on the right (one column on small screens)
+            <div className="grid gap-6 lg:grid-cols-2">
               <PlanBlock
                 title="Needs"
                 pct={selectedPlan.needs}
@@ -526,21 +558,23 @@ function BudgetPage() {
                 values={allocations}
                 onChange={handleAllocationChange}
               />
-              <PlanBlock
-                title="Wants"
-                pct={selectedPlan.wants}
-                target={roundCents((amount * selectedPlan.wants) / 100)}
-                categories={wantsCategories}
-                amountFor={(categoryId) => toAmount(allocations[categoryId])}
-                values={allocations}
-                onChange={handleAllocationChange}
-              />
-              <SavingsPlan
-                income={amount}
-                savingsPct={selectedPlan.savings}
-                expectedSpending={formExpectedSpending}
-              />
-            </>
+              <div className="flex flex-col gap-6">
+                <PlanBlock
+                  title="Wants"
+                  pct={selectedPlan.wants}
+                  target={roundCents((amount * selectedPlan.wants) / 100)}
+                  categories={wantsCategories}
+                  amountFor={(categoryId) => toAmount(allocations[categoryId])}
+                  values={allocations}
+                  onChange={handleAllocationChange}
+                />
+                <SavingsPlan
+                  income={amount}
+                  savingsPct={selectedPlan.savings}
+                  expectedSpending={formExpectedSpending}
+                />
+              </div>
+            </div>
           ) : (
             <p className="text-slate-500">Enter your expected budget to plan your spending.</p>
           )}
@@ -559,6 +593,7 @@ function BudgetPage() {
           <Link to="/dashboard" className={linkClass}>
             Back to dashboard
           </Link>
+          
         </p>
       </main>
     </div>

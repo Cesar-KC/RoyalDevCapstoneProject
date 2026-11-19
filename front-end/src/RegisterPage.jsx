@@ -71,11 +71,6 @@ function RegisterPage() {
       <div className="w-full max-w-xl rounded-3xl border border-slate-200 bg-white p-10 shadow-xl shadow-slate-200/60">
         <h1 className="text-4xl font-medium tracking-tight text-[#1b2559]">Register</h1>
 
-        <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          Demo app: use made-up information only. Don't enter a real email you care about,
-          and use a password you don't use anywhere else.
-        </p>
-
         <form onSubmit={handleSubmit} className="mt-8 grid grid-cols-2 gap-x-4 gap-y-6">
           <div className="flex flex-col gap-2">
             <label className={labelClass}>Username</label>
