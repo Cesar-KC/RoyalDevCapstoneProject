@@ -157,6 +157,34 @@ function SavingsPlan({ income, savingsPct, expectedSpending }) {
   );
 }
 
+// One category line in the Actual Spending table
+function SpendingRow({ row }) {
+  return (
+    <tr className="border-t border-slate-100">
+      <td className="py-3 text-slate-700">{row.name}</td>
+      <td className={`py-3 text-right ${NAVY}`}>{formatDollars(row.spent)}</td>
+      <td className={`py-3 text-right ${row.left < 0 ? "font-semibold text-red-600" : NAVY}`}>
+        {formatDollars(row.left)}
+      </td>
+    </tr>
+  );
+}
+
+// "NEEDS" / "WANTS" label above each group in the Actual Spending table
+function GroupHeader({ label }) {
+  return (
+    <tr>
+      <th
+        colSpan={3}
+        scope="colgroup"
+        className="pb-2 pt-5 text-left text-xs font-semibold uppercase tracking-wider text-slate-500"
+      >
+        {label}
+      </th>
+    </tr>
+  );
+}
+
 function TotalRow({ label, totals }) {
   return (
     <tr className={`border-t border-slate-200 font-semibold ${NAVY}`}>
@@ -183,9 +211,10 @@ function Stat({ label, value, valueClass = NAVY, note, children }) {
   );
 }
 
-// A card whose body is hidden until "Show details" is clicked, to keep the page short
-function CollapsibleCard({ title, children }) {
-  const [open, setOpen] = useState(false);
+// A card whose body can be hidden with "Hide details" / shown with "Show details".
+// Starts collapsed unless defaultOpen is set.
+function CollapsibleCard({ title, defaultOpen = false, children }) {
+  const [open, setOpen] = useState(defaultOpen);
 
   return (
     <section className={cardClass}>
@@ -350,6 +379,7 @@ function BudgetPage() {
     const needs = groupTotals(rows, "need");
     const wants = groupTotals(rows, "want");
     const summary = monthSummary(income, rows, transactions);
+    const budgetLeft = roundCents(summary.plannedSpending - summary.spent);
 
     // Why projected savings differs from the plan (shown on hover over ⓘ)
     const reasons = [`Plan saves ${formatDollars(summary.plannedSavings)}`];
@@ -382,7 +412,7 @@ function BudgetPage() {
           </div>
 
           <div className="mt-8 flex flex-col gap-6">
-            <CollapsibleCard title="Expected Allocations">
+            <CollapsibleCard title="Planned Budget Allocation" defaultOpen>
               {/* Needs on the left, Wants and Savings stacked on the right (one column on small screens) */}
               <div className="mt-6 grid gap-6 lg:grid-cols-2">
                 <PlanBlock
@@ -415,21 +445,32 @@ function BudgetPage() {
                   <tr className="text-left text-slate-500">
                     <th className="py-2 font-medium">Category</th>
                     <th className="py-2 text-right font-medium">Spent</th>
-                    <th className="py-2 text-right font-medium">Left</th>
+                    <th className="py-2 text-right font-medium">Remaining</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map((row) => (
-                    <tr key={row.id} className="border-t border-slate-100">
-                      <td className="py-3 text-slate-700">{row.name}</td>
-                      <td className={`py-3 text-right ${NAVY}`}>{formatDollars(row.spent)}</td>
-                      <td className={`py-3 text-right ${row.left < 0 ? "font-semibold text-red-600" : NAVY}`}>
-                        {formatDollars(row.left)}
-                      </td>
-                    </tr>
-                  ))}
+                  <GroupHeader label="Needs" />
+                  {rows
+                    .filter((row) => row.kind === "need")
+                    .map((row) => (
+                      <SpendingRow key={row.id} row={row} />
+                    ))}
                   <TotalRow label="Needs total" totals={needs} />
+
+                  <GroupHeader label="Wants" />
+                  {rows
+                    .filter((row) => row.kind === "want")
+                    .map((row) => (
+                      <SpendingRow key={row.id} row={row} />
+                    ))}
                   <TotalRow label="Wants total" totals={wants} />
+
+                  {/* Uncategorized (deleted category) has no kind, so it goes last with no subheader */}
+                  {rows
+                    .filter((row) => row.kind === null)
+                    .map((row) => (
+                      <SpendingRow key={row.id} row={row} />
+                    ))}
                 </tbody>
               </table>
             </CollapsibleCard>
@@ -443,14 +484,22 @@ function BudgetPage() {
                   note={`of ${formatDollars(income)} expected`}
                 />
                 <Stat
-                  label="Spent so far"
+                  label="Budget used"
                   value={formatDollars(summary.spent)}
-                  note={`of ${formatDollars(summary.plannedSpending)} expected`}
+                  note={
+                    <>
+                      of {formatDollars(summary.plannedSpending)} planned ·{" "}
+                      <span className={budgetLeft < 0 ? "text-red-600" : ""}>
+                        {formatDollars(budgetLeft)} left
+                      </span>
+                    </>
+                  }
                 />
                 <Stat
                   label="Projected savings"
                   value={formatDollars(summary.projectedSavings)}
                   valueClass={summary.projectedSavings < 0 ? "text-red-600" : NAVY}
+                  note={`Saved so far: ${formatDollars(roundCents(summary.received - summary.spent))}`}
                 >
                   {explanation && (
                     <span title={explanation} className="cursor-help text-slate-400">
@@ -459,14 +508,6 @@ function BudgetPage() {
                   )}
                 </Stat>
               </div>
-              {summary.missingIncome > 0 && (
-                <p className={`mt-4 ${NOTE.warning}`}>
-                  Still expecting {formatDollars(summary.missingIncome)} of income. If it doesn't arrive:{" "}
-                  <span className={summary.worstCaseSavings < 0 ? "font-semibold text-red-600" : "font-semibold"}>
-                    {formatDollars(summary.worstCaseSavings)}
-                  </span>
-                </p>
-              )}
             </section>
           </div>
 
